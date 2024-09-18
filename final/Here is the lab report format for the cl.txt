@@ -1,0 +1,166 @@
+Here is the lab report format for the client-side code implementation using Microsoft Word:
+
+---
+
+Title: AI-Based Priority Classification Client System
+
+Abstract:
+This report presents the implementation of a client-side system that captures images via a webcam, processes them using a pre-trained TensorFlow model, predicts the class based on the captured image, and sends the priority information to a server. The system utilizes socket communication to interact with the server, demonstrating a practical application of AI and networking in real-time image processing.
+
+1. Introduction:
+
+1.1 Background:
+The integration of AI and networking has opened new avenues for real-time applications, including image recognition and priority-based task management. This project aims to implement a client-side system that captures images, processes them using a machine learning model, and communicates the results to a server for further action.
+
+1.2 Objectives:
+- To capture images from a webcam.
+- To process the captured images using a pre-trained TensorFlow model.
+- To predict the class of the captured image and determine the priority.
+- To send the priority information to a server via socket communication.
+
+2. System Architecture:
+
+2.1 Block Diagram:
+A block diagram representing the system architecture is shown below:
+
+```mermaid
+graph TD;
+    A[Webcam] --> B[Image Capture];
+    B --> C[Image Preprocessing];
+    C --> D[Model Prediction];
+    D --> E[Priority Determination];
+    E --> F[Socket Communication];
+    F --> G[Server];
+```
+
+2.2 Description:
+- Webcam: Captures live images.
+- Image Capture: Grabs frames from the webcam.
+- Image Preprocessing: Resizes and normalizes the captured images.
+- Model Prediction: Uses a TensorFlow model to predict the class of the image.
+- Priority Determination: Determines the priority based on the predicted class.
+- Socket Communication: Sends the priority information to the server.
+- Server: Receives and processes the priority information.
+
+3. Implementation:
+
+3.1 Code Snippets:
+
+3.1.1 Main Client Code:
+```python
+import tensorflow as tf
+import keras
+from keras.models import load_model
+import cv2  # Ensure you have opencv-python installed
+import numpy as np
+import os
+import socket
+import sys
+import time
+from socket_file import socket_func, error
+
+np.set_printoptions(suppress=True)
+
+def model_func(sock: socket):
+    model_path = "./model.savedmodel/"
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file '{model_path}' not found. Please ensure the file is in the correct location.")
+    model = tf.saved_model.load("model.savedModel")
+    labels_path = "labels.txt"
+    if not os.path.exists(labels_path):
+        raise FileNotFoundError(f"Labels file '{labels_path}' not found. Please ensure the file is in the correct location.")
+    class_names = open(labels_path, "r").readlines()
+    camera = cv2.VideoCapture(0)
+    while True:
+        ret, image = camera.read()
+        if not ret:
+            print("Failed to grab frame")
+            continue
+        image_resized = cv2.resize(image, (224, 224), interpolation=cv2.INTER_AREA)
+        cv2.imshow("Webcam Image", image_resized)
+        image_array = np.asarray(image_resized, dtype=np.float32).reshape(1, 224, 224, 3)
+        image_normalized = (image_array / 127.5) - 1
+        prediction = model(image_normalized)
+        index = np.argmax(prediction)
+        class_name = class_names[index].strip()
+        confidence_score = prediction[0][index]
+        print(f"Class: {class_name} Confidence Score: {confidence_score:.2%}")
+        keyboard_input = cv2.waitKey(1)
+        if keyboard_input == 27:
+            break
+        buffer = class_name
+        if buffer not in ["1", "2"]:
+            buffer = "0"
+        try:
+            sock.sendall(buffer.encode())
+            time.sleep(0.25)
+        except socket.error as err:
+            error(f"Error writing to socket: {err}")
+    camera.release()
+    cv2.destroyAllWindows()
+    sock.close()
+
+if __name__ == "__main__":
+    sock = socket_func()
+    model_func(sock=sock)
+```
+
+3.1.2 Socket File Code (`socket_file.py`):
+```python
+import socket
+import sys
+
+def error(msg):
+    print(f"Error: {msg}")
+    sys.exit(1)
+
+def socket_func() -> socket:
+    if len(sys.argv) < 3:
+        print(f"Usage: {sys.argv[0]} <hostname> <port>")
+        sys.exit(1)
+    hostname = sys.argv[1]
+    portno = int(sys.argv[2])
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error as err:
+        error(f"Error opening socket: {err}")
+    try:
+        server_ip = socket.gethostbyname(hostname)
+    except socket.error as err:
+        error(f"Error, no such host: {err}")
+    server_addr = (server_ip, portno)
+    try:
+        sock.connect(server_addr)
+    except socket.error as err:
+        error(f"Error connecting: {err}")
+    return sock
+```
+
+4. Results and Discussion:
+
+4.1 Results:
+The system successfully captures images from the webcam, processes them, and predicts the class using the TensorFlow model. The predicted class is then converted to a priority value and sent to the server using socket communication.
+
+4.2 Discussion:
+The implementation demonstrates a practical application of AI and networking in real-time image processing. The system can be further enhanced by integrating more complex models and improving the user interface.
+
+5. Conclusion:
+This project successfully implemented a client-side system that captures, processes, and classifies images in real-time, sending priority information to a server. The integration of AI and socket communication showcases the potential for developing advanced real-time applications.
+
+6. Future Work:
+- Integrate more sophisticated machine learning models.
+- Enhance the user interface for better user experience.
+- Implement additional functionalities such as real-time alerts based on classification results.
+
+References:
+- TensorFlow Documentation
+- OpenCV Documentation
+- Socket Programming in Python
+
+Appendix:
+- Code Listings: Full code listings for the client and socket file.
+- Output Screenshots: Screenshots of the output and system in action.
+
+---
+
+This format should help in documenting the client-side implementation of the AI-based priority classification system in a structured and comprehensive manner.
